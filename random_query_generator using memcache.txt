@@ -1,0 +1,298 @@
+
+import boto
+import boto.s3
+import MySQLdb
+import sys
+from boto.s3.key import Key
+import datetime
+import time
+import csv
+import os, swiftclient
+import random
+from flask import Flask, render_template, request
+
+
+import memcache
+mc = memcache.Client(['url-memcache'], debug = 1)
+
+
+app = Flask(__name__)
+port = int(os.getenv('VCAP_APP_PORT', 5000))
+
+
+AWS_ACCESS_KEY_ID = 'AWS_ACCESS_KEY_ID' 
+AWS_SECRET_ACCESS_KEY = 'AWS_SECRET_ACCESS_KEY'
+
+db = MySQLdb.connect(host = "myhostname",
+                     user="chetan",passwd="mypassword", port=3306, db="newdb")
+
+#db = MySQLdb.connect(host="localhost",
+#                     user="root", passwd="root", port=3306, db="sakila")
+cur = db.cursor()
+print('successfuly commected to rds')
+
+bucket_name = AWS_ACCESS_KEY_ID.lower() + '-dump5'
+conn = boto.connect_s3(AWS_ACCESS_KEY_ID,
+                       AWS_SECRET_ACCESS_KEY)
+
+bucket = conn.create_bucket(bucket_name,location=boto.s3.connection.Location.DEFAULT)
+
+def percent_cb(complete, total):
+    sys.stdout.write('.')
+    sys.stdout.flush()
+
+
+@app.route('/index')
+def index():
+    print("in index")
+    return render_template('index.html')
+
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    print("in upload")
+    testfile2 = "C:\\Users\\nitin\\Desktop\\assign4\\"
+    file1 = request.files['file']
+    file2 = file1.filename
+    #print("file2 = ", file2)
+    testfile = testfile2 + str(file2)
+    print("testfile = ", testfile)
+    print 'Uploading %s to Amazon S3 bucket %s' % \
+          (testfile, bucket_name)
+    k = Key(bucket)
+    k.key = 'my test file'
+    a = datetime.datetime.now()
+    timestamp1 = time.time()
+    k.set_contents_from_filename(testfile,cb=percent_cb, num_cb=10)
+    b = datetime.datetime.now()
+    ttime = b - a
+    print("time needed to load in bucket is ", ttime)
+
+    return render_template('upload.html', ttime=ttime)
+
+
+@app.route('/download', methods=['GET', 'POST'])
+def download():
+    global tname
+    file1 = request.files['file']
+    filenamei = file1.filename
+    #print("file2 = ", filenamei)
+
+    with open(filenamei, 'r') as f:
+        reader = csv.reader(f)
+        row1 = next(reader)
+
+    testfile = filenamei
+    testfileo = "'" + testfile + "'"
+
+    tname2 = testfile.split('.')
+    tname = tname2[0]
+
+
+    tc = len(row1)
+    tc = tc - 3
+    tcparm = ""
+    for i in range(tc):
+        tcparm = tcparm + row1[i] + " varchar(50),"
+
+    
+    tcparm = tcparm + "pid int AUTO_INCREMENT ," + " PRIMARY KEY (pid)"
+    print(tcparm)
+    print(tname)
+
+    sql = "DROP TABLE IF EXISTS %s " %(tname)
+    print(sql)
+    cur.execute(sql);
+
+    # create table
+    sql = "CREATE TABLE  " +tname  +" ( " +tcparm +" ); ";
+    #sql = "CREATE TABLE  " + tname + " ( " + "id int AUTO_INCREMENT , " + tcparm + " PRIMARY KEY (id)" + " ); ";
+
+    print(sql)
+    try:
+        cur.execute(sql)
+    except:
+        print("error in creating table")
+    #print("")
+
+    strq = "'" + '"' + "'"
+    print(strq)
+
+
+    sql = "LOAD DATA LOCAL INFILE  " + (
+    testfileo) + " INTO TABLE " + tname + " FIELDS TERMINATED BY ',' " + " ENCLOSED BY " + strq + " LINES TERMINATED BY '\\r\\n'" + " ignore 1 lines ";
+    print(sql)
+    a = datetime.datetime.now()
+    try:
+        cur.execute(sql)
+    except:
+        print("error in creating loading data into table")
+    b = datetime.datetime.now()
+    timed2 = b - a
+    print("time needed to load file in DB=", timed2)
+    db.commit()
+
+    sql = "update %s set Aug = -1, Sep = -1 and Dec = -1 where (Aug > 1000 or Sep  > 1000 or Dec > 1000) " % (tname)
+    try:
+        cur.execute(sql)
+    except:
+        print("error in operation on table")
+    db.commit()
+    b = datetime.datetime.now()
+    ttime3 = b - a
+    print("time needed is ", ttime3)
+
+    sql = "delete from  %s where Country = 'Canada' " % (tname)
+    try:
+        cur.execute(sql)
+    except:
+        print("error in operation on table")
+    db.commit()
+    b = datetime.datetime.now()
+    ttime44 = b - a
+    print("time needed is ", ttime44)
+    return render_template('download.html', timed2=timed2)
+
+
+@app.route('/q1', methods=['GET', 'POST'])
+def q1():  #7 th
+    global tname
+    print(tname)
+    qi = request.form['text1']
+    qq  = request.form['text3']
+    ttime3 = 0
+    ttime4 = 0
+    print('qi',qi)
+    if qi == '':
+        ttime31 = 0
+    else:
+        a = datetime.datetime.now()
+
+
+        for i in range(int(250)):
+
+            #pidr = random.randrange(1, 10)
+            sql = "select * from %s where %s" %(tname, qq)
+
+            try:
+                cur.execute(sql)
+            except:
+                print("error in operation on table")
+
+        
+        results = cur.fetchall()
+        print('results', results)
+        for row in results:
+            print(row)
+
+	for i in range(int(2000)):
+
+            #pidr = random.randrange(1, 10)
+            sql = "select * from %s where %s" %(tname, qq)
+
+            try:
+                cur.execute(sql)
+            except:
+                print("error in operation on table")
+
+        
+        results = cur.fetchall()
+        print('results', results)
+        for row in results:
+            print(row)
+
+	for i in range(int(2000)):
+
+            #pidr = random.randrange(1, 10)
+            sql = "select * from %s where %s" %(tname, qq)
+
+            try:
+                cur.execute(sql)
+            except:
+                print("error in operation on table")
+
+        
+        results = cur.fetchall()
+        print('results', results)
+        for row in results:
+            print(row)
+	
+        resultss = str(results) + str(qi)
+
+
+    qi2 = request.form['text2']
+    print('qi', qi2)
+    if qi2 == '':
+        ttime41 = ''
+    else:
+        a = datetime.datetime.now()
+        qi2t = str()
+        sql="select * from %s where %s " % (tname, int(qi2t))
+        print(sql)
+        try:
+            cur.execute(sql)
+        except:
+            print("error in operation2 on table")
+        b = datetime.datetime.now()
+        ttime4 = b - a
+        print("time needed is ", ttime4)
+        ttime41 = " time needed to execuet limited tuples is = " + str(ttime4)
+
+    ttime5 = ttime3 + ttime4
+    ttime51 = " total time needed to execute =  = " + str(ttime5)
+    ttime = []
+    ttime.append(str(ttime31))
+    ttime.append(str(ttime41))
+    ttime.append(str(ttime51))
+
+    return render_template('q2.html', resultss=resultss)
+
+
+
+app.route('/q2', methods=['GET', 'POST']) #8
+def q2():
+    global tname
+    print(tname)
+
+    qi = request.form['text1']
+    qq = request.form['text3']
+    ttime3 = 0
+    ttime4 = 0
+    print('qi', qi)
+    if qi == '':
+        ttime31 = 0
+    else:
+        a = datetime.datetime.now()
+
+        for i in range(int(250)):
+
+            value = mc.get(qq)
+            if value == 'None':
+                res = value
+            else:
+                # pidr = random.randrange(1, 10)
+                sql = "select * from %s where %s" % (tname, qq)
+                try:
+                    cur.execute(sql)
+                except:
+                    print("error in operation on table")
+
+                results = cur.fetchall()
+                print('results', results)
+                for row in results:
+                    print(row)
+                    mc.set(row)
+                    hc = hc + 1
+
+        b = datetime.datetime.now()
+        timet = b -a
+        resultss = str(results) + str(qi)
+
+    return render_template('q2.html', resultss=resultss)
+
+
+if __name__ == "__main__":
+    tname = ''
+    app.run(host='0.0.0.1', port=port)
+
+
