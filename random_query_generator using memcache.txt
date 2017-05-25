@@ -10,15 +10,11 @@ import csv
 import os, swiftclient
 import random
 from flask import Flask, render_template, request
-
-
 import memcache
+
 mc = memcache.Client(['url-memcache'], debug = 1)
-
-
 app = Flask(__name__)
 port = int(os.getenv('VCAP_APP_PORT', 5000))
-
 
 AWS_ACCESS_KEY_ID = 'AWS_ACCESS_KEY_ID' 
 AWS_SECRET_ACCESS_KEY = 'AWS_SECRET_ACCESS_KEY'
@@ -36,6 +32,7 @@ conn = boto.connect_s3(AWS_ACCESS_KEY_ID,
                        AWS_SECRET_ACCESS_KEY)
 
 bucket = conn.create_bucket(bucket_name,location=boto.s3.connection.Location.DEFAULT)
+
 
 def percent_cb(complete, total):
     sys.stdout.write('.')
@@ -67,7 +64,6 @@ def upload():
     b = datetime.datetime.now()
     ttime = b - a
     print("time needed to load in bucket is ", ttime)
-
     return render_template('upload.html', ttime=ttime)
 
 
@@ -76,8 +72,7 @@ def download():
     global tname
     file1 = request.files['file']
     filenamei = file1.filename
-    #print("file2 = ", filenamei)
-
+    
     with open(filenamei, 'r') as f:
         reader = csv.reader(f)
         row1 = next(reader)
@@ -87,19 +82,14 @@ def download():
 
     tname2 = testfile.split('.')
     tname = tname2[0]
-
-
     tc = len(row1)
     tc = tc - 3
     tcparm = ""
     for i in range(tc):
         tcparm = tcparm + row1[i] + " varchar(50),"
-
     
     tcparm = tcparm + "pid int AUTO_INCREMENT ," + " PRIMARY KEY (pid)"
-    print(tcparm)
-    print(tname)
-
+   
     sql = "DROP TABLE IF EXISTS %s " %(tname)
     print(sql)
     cur.execute(sql);
@@ -117,7 +107,6 @@ def download():
 
     strq = "'" + '"' + "'"
     print(strq)
-
 
     sql = "LOAD DATA LOCAL INFILE  " + (
     testfileo) + " INTO TABLE " + tname + " FIELDS TERMINATED BY ',' " + " ENCLOSED BY " + strq + " LINES TERMINATED BY '\\r\\n'" + " ignore 1 lines ";
@@ -167,58 +156,44 @@ def q1():  #7 th
         ttime31 = 0
     else:
         a = datetime.datetime.now()
-
-
-        for i in range(int(250)):
-
-            #pidr = random.randrange(1, 10)
-            sql = "select * from %s where %s" %(tname, qq)
-
-            try:
-                cur.execute(sql)
-            except:
-                print("error in operation on table")
-
-        
-        results = cur.fetchall()
-        print('results', results)
-        for row in results:
-            print(row)
-
-	for i in range(int(2000)):
-
-            #pidr = random.randrange(1, 10)
-            sql = "select * from %s where %s" %(tname, qq)
-
-            try:
-                cur.execute(sql)
-            except:
-                print("error in operation on table")
-
-        
-        results = cur.fetchall()
-        print('results', results)
-        for row in results:
-            print(row)
-
-	for i in range(int(2000)):
-
-            #pidr = random.randrange(1, 10)
-            sql = "select * from %s where %s" %(tname, qq)
-
-            try:
-                cur.execute(sql)
-            except:
-                print("error in operation on table")
-
-        
-        results = cur.fetchall()
-        print('results', results)
-        for row in results:
-            print(row)
 	
-        resultss = str(results) + str(qi)
+        for i in range(int(250)):            
+            sql = "select * from %s where %s" %(tname, qq)
+            try:
+                cur.execute(sql)
+            except:
+                print("error in operation on table")
+        
+        results = cur.fetchall()
+        print('results', results)
+        for row in results:
+            print(row)
+	    
+	for i in range(int(2000)):          
+            sql = "select * from %s where %s" %(tname, qq)
+            try:
+                cur.execute(sql)
+            except:
+                print("error in operation on table")
+        
+        results = cur.fetchall()
+        print('results', results)
+        for row in results:
+            print(row)
 
+	for i in range(int(2000)):
+            #pidr = random.randrange(1, 10)
+            sql = "select * from %s where %s" %(tname, qq)
+            try:
+                cur.execute(sql)
+            except:
+                print("error in operation on table")
+        
+        results = cur.fetchall()
+        print('results', results)
+        for row in results:
+            print(row)	
+        resultss = str(results) + str(qi)
 
     qi2 = request.form['text2']
     print('qi', qi2)
@@ -244,16 +219,12 @@ def q1():  #7 th
     ttime.append(str(ttime31))
     ttime.append(str(ttime41))
     ttime.append(str(ttime51))
-
     return render_template('q2.html', resultss=resultss)
-
 
 
 app.route('/q2', methods=['GET', 'POST']) #8
 def q2():
     global tname
-    print(tname)
-
     qi = request.form['text1']
     qq = request.form['text3']
     ttime3 = 0
@@ -265,7 +236,6 @@ def q2():
         a = datetime.datetime.now()
 
         for i in range(int(250)):
-
             value = mc.get(qq)
             if value == 'None':
                 res = value
@@ -287,7 +257,6 @@ def q2():
         b = datetime.datetime.now()
         timet = b -a
         resultss = str(results) + str(qi)
-
     return render_template('q2.html', resultss=resultss)
 
 
